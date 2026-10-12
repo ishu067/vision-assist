@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="VisionAssist setup"
+            android:textSize="28sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Tune the display for comfort. These settings do not diagnose an eye condition or calculate a prescription." />
+
+        <EditText
+            android:id="@+id/conditionInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:hint="Declared condition (optional)"
+            android:inputType="text" />
+
+        <EditText
+            android:id="@+id/sphereInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Sphere power (optional)"
+            android:inputType="numberSigned|numberDecimal" />
+
+        <EditText
+            android:id="@+id/cylinderInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Cylinder power (optional)"
+            android:inputType="numberSigned|numberDecimal" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Brightness" />
+
+        <SeekBar
+            android:id="@+id/brightnessInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="200"
+            android:progress="100" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Contrast" />
+
+        <SeekBar
+            android:id="@+id/contrastInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="200"
+            android:progress="50" />
+
+        <CheckBox
+            android:id="@+id/claheInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Use adaptive contrast" />
+
+        <Button
+            android:id="@+id/saveButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Save profile" />
+
+        <Button
+            android:id="@+id/overlayButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Enable overlay" />
+    </LinearLayout>
+</ScrollView>

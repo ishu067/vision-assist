@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+artifacts/
+android-app/local.properties
+.pytest_cache/

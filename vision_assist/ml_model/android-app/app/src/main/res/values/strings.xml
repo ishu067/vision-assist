@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">VisionAssist</string>
+    <string name="medical_boundary">VisionAssist is an accessibility aid, not a diagnosis or prescription tool.</string>
+</resources>

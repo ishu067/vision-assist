@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vision-assist"
+version = "0.1.0"
+description = "Local OpenCV enhancement and auto-cache core for VisionAssist"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24",
+    "opencv-python>=4.8",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
