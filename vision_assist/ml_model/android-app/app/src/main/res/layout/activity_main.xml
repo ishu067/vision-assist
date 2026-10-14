@@ -110,6 +110,30 @@
                     android:textColor="#52627A"
                     android:textSize="14sp" />
 
+                <TextView
+                    android:id="@+id/accessibilityStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:textColor="#52627A"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="To enable: open Accessibility settings, choose VisionAssist foreground-app detection under installed/downloaded services, then confirm Android’s prompt. It reads the foreground app package name and stores the latest name locally; it does not read screen contents. It can suspend capture for selected sensitive-app name patterns. Detection is best-effort, may miss apps, and is not guaranteed protection. Do not rely on it for banking or private information."
+                    android:textColor="#52627A"
+                    android:textSize="13sp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/accessibilitySettingsButton"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Enable foreground-app detection" />
+
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/overlaySettingsButton"
                     style="@style/Widget.Material3.Button.OutlinedButton"

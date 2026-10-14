@@ -25,6 +25,20 @@ Verified in this workspace:
   the app showed the running state. The in-app Stop action ended capture and
   removed the MediaProjection session. Cancelling the capture prompt also
   showed a clear denial state without crashing.
+- Accessibility setup: the debug APK was installed and launched on the Pixel 7
+  AVD. The user enabled the Accessibility Service through Android Settings and
+  VisionAssist reported it enabled and responding.
+- Accessibility behavior: during user-consented full-screen capture, switching
+  to Settings kept capture active. Opening Settings search exposed the
+  emulator's `com.google.android.inputmethod.latin` keyboard package and
+  automatically suspended capture; the persisted status explained why and
+  Android reported no active MediaProjection.
+- Detection-loss behavior: turning the Accessibility Service off during
+  capture stopped capture, removed the projection, and persisted a clear
+  detection-disconnected status. The service was re-enabled with user consent
+  afterward.
+- Android unit tests: `.\gradlew.bat testDebugUnitTest assembleDebug` passed;
+  both sensitive-package policy tests passed.
 
 Not verified yet:
 
@@ -37,12 +51,15 @@ Not verified yet:
   handling beyond code/build verification.
 - Rotation, latency, memory use, compatibility across apps, or physical-device
   behavior.
-- Automatic foreground-package detection and sensitive-app suspension.
+- Broad sensitive-app coverage across package names, apps, and physical
+  devices. Emulator keyboard suspension and service-loss shutdown were
+  verified, but the package-name heuristic can miss apps and is not a
+  guarantee of protection.
 - A dedicated offline/demo-mode presentation flow.
 
-The Android app should currently be presented as an **early prototype**. Do not
-claim that live enhancement, sensitive-app exclusion, or physical-device
-behavior has been fully validated.
+The Android app should currently be presented as an **early prototype**. Live
+capture and limited guard behavior were demonstrated on one emulator; do not
+claim broad sensitive-app exclusion or physical-device compatibility.
 
 ## 1. Source document reviewed
 
@@ -144,8 +161,9 @@ User inputs and calibration
    Enhanced local frame
 ```
 
-The Accessibility Service, Quick Settings tile, TFLite performance controller,
-and a dedicated presentation demo mode are not implemented yet.
+The opt-in Accessibility Service is implemented but not end-to-end validated.
+A Quick Settings tile, TFLite performance controller, and dedicated
+presentation demo mode are not implemented yet.
 
 ## 5. Completed bridge step
 
@@ -187,15 +205,30 @@ An Android module now exists under `android-app`.
 
 ### Sensitive-app exclusion
 
-- `SensitiveAppPolicy.kt` identifies package-name fragments associated with banking, wallets, passwords, authenticators, keyboards, and IMEs.
-- The service accepts `EXTRA_FOREGROUND_PACKAGE` and removes the overlay for a sensitive package when it is given the foreground package.
-- Automatic foreground-package detection is not implemented; therefore sensitive-app suspension is not currently an end-to-end safeguard and must not be presented as guaranteed protection.
+- `ForegroundAppAccessibilityService.kt` listens only for window-state changes,
+  records the foreground package identifier, and does not retrieve window
+  contents. Android's Settings requires the user to enable it explicitly.
+- `MainActivity.kt` explains the service, links to Accessibility Settings, and
+  requires a recent service heartbeat before starting capture.
+- `OverlayService.kt` suspends capture and removes the overlay when a package
+  name matches the conservative sensitive-name heuristic or detection becomes
+  unavailable. Package-name matching can miss sensitive apps and is not
+  guaranteed protection.
+- `SensitiveAppPolicyTest` covers representative name matches and a
+  non-matching package. On the Pixel 7 Android 15 AVD, opening Settings search
+  caused the service to detect `com.google.android.inputmethod.latin` and stop
+  active capture; disabling Accessibility during another active capture also
+  stopped it. The service was re-enabled with user consent after testing.
 
 ### Validation
 
 - Android Studio is installed at `C:\Program Files\Android\Android Studio` with a bundled JBR. Android SDK Platform 35, Android build tools, Platform-Tools/ADB, and a Pixel 7 AVD are installed under `D:\Android`.
 - The machine-level `JAVA_HOME` still contains a stale path (`C:\Users\ishuy\AppData\Local\Programs\Eclipse Adoptium`). A non-elevated attempt to clear it was denied. The Android wrapper falls back to Android Studio's JBR when the inherited Java path is invalid; the project also sets `org.gradle.java.home`.
 - `.\gradlew.bat assembleDebug` completed successfully. The build emitted a warning that Android Gradle Plugin 8.5.2 was tested through compileSdk 34 while this app uses compileSdk 35.
+- `.\gradlew.bat testDebugUnitTest assembleDebug` completed successfully after adding the Accessibility Service. Both package-policy unit tests passed.
+- The updated debug APK installed and launched on the Pixel 7 Android 15 AVD. Android Accessibility Settings displayed the service and disclosure; the user enabled it and the app showed an enabled/responding status.
+- On the AVD, full-screen capture remained active while switching to Settings. Opening Settings search showed the `com.google.android.inputmethod.latin` IME; the service detected it, suspended capture, and Android reported no active projection.
+- With capture active in a separate run, turning the Accessibility Service off caused immediate capture shutdown and a visible stored detection-disconnected status. The user re-enabled the service afterward; Settings and the service binding confirmed it remained enabled.
 - The debug APK installed and `MainActivity` launched on the Pixel 7 AVD (Android 15/API 35). Notification permission and Android's explicit full-screen MediaProjection consent were granted; first-frame status and active foreground-service state were verified.
 - The in-app Stop action ended the projection and foreground service. Cancelling the system capture prompt showed the denial message and left the app process running.
 - Startup-timeout, external projection revocation, and physical-device scenarios have not been exercised.
@@ -210,9 +243,10 @@ Prioritize a reliable, honest demonstration over production features:
 2. Add a clear demo-mode path using synthetic or bundled non-sensitive imagery
    so the enhancement can be shown even if live capture is unavailable. Label
    it clearly as demo content, not live screen capture.
-3. Implement foreground-app detection for the existing sensitive-app policy
-   only if it can be tested end-to-end. Explain its user-granted Accessibility
-   permission and limitations; do not claim guaranteed protection.
+3. Repeat the foreground-app and service-loss scenarios on a physical device
+   and additional harmless package names if available. Do not use actual
+   private account data or claim the package-name heuristic guarantees
+   protection.
 4. Rehearse on a physical device if available and document observed
    limitations. Do not claim this has been validated across apps or devices.
 5. Refresh this status and the Android README with only results actually
@@ -224,5 +258,7 @@ Prioritize a reliable, honest demonstration over production features:
 - Do not claim that the system diagnoses cataracts, color blindness, refractive error, or any other condition.
 - Do not calculate or recommend spectacle prescriptions.
 - Keep medical fields local and minimize their retention.
-- Implement and verify sensitive-surface suspension before describing it as a feature; the current package policy alone does not detect the foreground app automatically.
+- Foreground app switching and service-loss shutdown were manually tested on
+  one emulator only. The package-name heuristic is not a guarantee of
+  protection; do not imply broad sensitive-surface coverage.
 - Validate accessibility benefit with qualified users and clinical/accessibility guidance before real-world deployment.

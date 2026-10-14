@@ -7,11 +7,13 @@ object SensitiveAppPolicy {
         "password",
         "authenticator",
         "keyboard",
-        "ime",
+        "inputmethod",
     )
 
     fun shouldSuspend(packageName: String?): Boolean {
-        val normalized = packageName?.lowercase() ?: return false
-        return blockedPackageFragments.any(normalized::contains)
+        val packageSegments = packageName?.lowercase()?.split('.') ?: return false
+        return packageSegments.any { segment ->
+            segment == "ime" || blockedPackageFragments.any(segment::contains)
+        }
     }
 }

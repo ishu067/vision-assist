@@ -81,6 +81,7 @@ class MainActivity : AppCompatActivity() {
             binding.actionMessage.text = "Your profile was saved on this device."
         }
         binding.overlaySettingsButton.setOnClickListener { openOverlaySettings() }
+        binding.accessibilitySettingsButton.setOnClickListener { openAccessibilitySettings() }
         binding.notificationPermissionButton.setOnClickListener {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -156,6 +157,18 @@ class MainActivity : AppCompatActivity() {
             return
         }
         binding.actionMessage.text = "Android will ask you to approve screen capture."
+        if (!AccessibilityGuard.isServiceEnabled(this)) {
+            binding.actionMessage.text =
+                "Enable VisionAssist foreground-app detection in Accessibility settings before starting."
+            openAccessibilitySettings()
+            return
+        }
+        if (!AccessibilityGuard.hasRecentHeartbeat(this)) {
+            binding.actionMessage.text =
+                "Foreground-app detection is enabled but not responding. Re-enable it in Accessibility settings before starting."
+            openAccessibilitySettings()
+            return
+        }
         try {
             val manager = requireNotNull(
                 getSystemService(android.media.projection.MediaProjectionManager::class.java),
@@ -185,6 +198,10 @@ class MainActivity : AppCompatActivity() {
         startActivity(
             Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")),
         )
+    }
+
+    private fun openAccessibilitySettings() {
+        startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
     }
 
     private fun applySystemBarInsets() {
@@ -230,6 +247,22 @@ class MainActivity : AppCompatActivity() {
             binding.notificationPermissionStatus.text = "Notifications: Runtime permission not required on this Android version"
             binding.notificationPermissionButton.isEnabled = false
             binding.notificationPermissionButton.text = "Notification permission not required"
+        }
+
+        val accessibilityEnabled = AccessibilityGuard.isServiceEnabled(this)
+        val accessibilityResponding = accessibilityEnabled && AccessibilityGuard.hasRecentHeartbeat(this)
+        binding.accessibilityStatus.text = when {
+            accessibilityResponding ->
+                "Foreground-app detection: Enabled and responding"
+            accessibilityEnabled ->
+                "Foreground-app detection: Enabled in Settings, but not responding"
+            else ->
+                "Foreground-app detection: Not enabled"
+        }
+        binding.accessibilitySettingsButton.text = if (accessibilityResponding) {
+            "Review Accessibility settings"
+        } else {
+            "Enable foreground-app detection"
         }
     }
 

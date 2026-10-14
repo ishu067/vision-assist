@@ -6,7 +6,10 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.app.Activity
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.drawable.Icon
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
@@ -20,6 +23,7 @@ import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
 import androidx.core.app.ServiceCompat
+import androidx.core.content.ContextCompat
 import org.opencv.android.OpenCVLoader
 
 /**
@@ -37,6 +41,38 @@ class OverlayService : Service() {
     private var processingErrorReported = false
     private var firstFrameReceived = false
     private var serviceActive = false
+    private var guardReceiverRegistered = false
+
+    private val accessibilityGuardReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (!serviceActive) return
+            when (intent?.action) {
+                ForegroundAppAccessibilityService.ACTION_FOREGROUND_PACKAGE_CHANGED -> {
+                    val packageName = intent.getStringExtra(
+                        ForegroundAppAccessibilityService.EXTRA_GUARD_VALUE,
+                    )
+                    if (packageName.isNullOrBlank()) {
+                        failSession("Foreground-app detection returned no app name; enhancement was suspended.")
+                    } else if (SensitiveAppPolicy.shouldSuspend(packageName)) {
+                        failSession("A potentially sensitive app was detected; enhancement was suspended.")
+                    }
+                }
+
+                ForegroundAppAccessibilityService.ACTION_GUARD_UNAVAILABLE -> {
+                    val detail = intent.getStringExtra(
+                        ForegroundAppAccessibilityService.EXTRA_GUARD_VALUE,
+                    ).orEmpty()
+                    failSession(
+                        if (detail.isBlank()) {
+                            "Foreground-app detection is unavailable; enhancement was suspended."
+                        } else {
+                            "$detail Enhancement was suspended."
+                        },
+                    )
+                }
+            }
+        }
+    }
 
     private val captureStartupTimeout = Runnable {
         if (serviceActive && !firstFrameReceived) {
@@ -44,8 +80,20 @@ class OverlayService : Service() {
         }
     }
 
+    private val accessibilityWatchdog = object : Runnable {
+        override fun run() {
+            if (!serviceActive) return
+            if (!AccessibilityGuard.isAvailable(this@OverlayService)) {
+                failSession("Foreground-app detection stopped responding; enhancement was suspended.")
+                return
+            }
+            handler.postDelayed(this, ACCESSIBILITY_WATCHDOG_INTERVAL_MS)
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
+        registerAccessibilityGuardReceiver()
         openCvReady = try {
             OpenCVLoader.initLocal()
         } catch (exception: Exception) {
@@ -80,7 +128,15 @@ class OverlayService : Service() {
                 failStart(startId, "Overlay access is not allowed. Enable it in Android Settings and try again.")
                 return START_NOT_STICKY
             }
+            if (!AccessibilityGuard.isAvailable(this)) {
+                failStart(
+                    startId,
+                    "Foreground-app detection is unavailable. Enable VisionAssist in Android Accessibility settings, then try again.",
+                )
+                return START_NOT_STICKY
+            }
             val foregroundPackage = intent?.getStringExtra(EXTRA_FOREGROUND_PACKAGE)
+                ?: ProfileStorage(this).lastForegroundPackage()
             if (SensitiveAppPolicy.shouldSuspend(foregroundPackage)) {
                 stopSession("Enhancement suspended for a sensitive app.")
                 stopSelf(startId)
@@ -95,6 +151,7 @@ class OverlayService : Service() {
             startForegroundCapture(resultCode, resultData)
             if (overlayView == null) showOverlay()
             handler.postDelayed(captureStartupTimeout, CAPTURE_START_TIMEOUT_MS)
+            handler.postDelayed(accessibilityWatchdog, ACCESSIBILITY_WATCHDOG_INTERVAL_MS)
             return START_NOT_STICKY
         } catch (exception: Exception) {
             failStart(
@@ -123,6 +180,11 @@ class OverlayService : Service() {
 
     override fun onDestroy() {
         handler.removeCallbacks(captureStartupTimeout)
+        handler.removeCallbacks(accessibilityWatchdog)
+        if (guardReceiverRegistered) {
+            unregisterReceiver(accessibilityGuardReceiver)
+            guardReceiverRegistered = false
+        }
         val wasActive = serviceActive
         val cleanupFailure = releaseCapture()
         hideOverlay()
@@ -269,6 +331,7 @@ class OverlayService : Service() {
 
     private fun stopSession(message: String) {
         handler.removeCallbacks(captureStartupTimeout)
+        handler.removeCallbacks(accessibilityWatchdog)
         serviceActive = false
         captureServiceActive = false
         val cleanupFailure = releaseCapture()
@@ -354,6 +417,20 @@ class OverlayService : Service() {
         }
     }
 
+    private fun registerAccessibilityGuardReceiver() {
+        val filter = IntentFilter().apply {
+            addAction(ForegroundAppAccessibilityService.ACTION_FOREGROUND_PACKAGE_CHANGED)
+            addAction(ForegroundAppAccessibilityService.ACTION_GUARD_UNAVAILABLE)
+        }
+        ContextCompat.registerReceiver(
+            this,
+            accessibilityGuardReceiver,
+            filter,
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+        guardReceiverRegistered = true
+    }
+
     @Suppress("DEPRECATION")
     private fun readResultData(intent: Intent): Intent? = if (Build.VERSION.SDK_INT >= 33) {
         intent.getParcelableExtra(EXTRA_RESULT_DATA, Intent::class.java)
@@ -366,6 +443,7 @@ class OverlayService : Service() {
         private const val CHANNEL_ID = "vision_assist_capture"
         private const val NOTIFICATION_ID = 2301
         private const val CAPTURE_START_TIMEOUT_MS = 15_000L
+        private const val ACCESSIBILITY_WATCHDOG_INTERVAL_MS = 2_500L
         const val ACTION_STOP = "com.visionassist.android.action.STOP"
         const val ACTION_STATUS_CHANGED = "com.visionassist.android.action.STATUS_CHANGED"
         const val EXTRA_STATUS_RUNNING = "status_running"

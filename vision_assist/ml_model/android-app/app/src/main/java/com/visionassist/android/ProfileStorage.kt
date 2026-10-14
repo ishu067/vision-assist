@@ -29,9 +29,28 @@ class ProfileStorage(context: Context) {
             .apply()
     }
 
+    fun accessibilityHeartbeat(): Long = preferences.getLong(KEY_ACCESSIBILITY_HEARTBEAT, 0L)
+
+    fun setAccessibilityHeartbeat(timestampMillis: Long) {
+        preferences.edit().putLong(KEY_ACCESSIBILITY_HEARTBEAT, timestampMillis).apply()
+    }
+
+    fun clearAccessibilityHeartbeat() {
+        preferences.edit().remove(KEY_ACCESSIBILITY_HEARTBEAT).apply()
+    }
+
+    fun setLastForegroundPackage(packageName: String) {
+        preferences.edit().putString(KEY_LAST_FOREGROUND_PACKAGE, packageName).apply()
+    }
+
+    fun lastForegroundPackage(): String? =
+        preferences.getString(KEY_LAST_FOREGROUND_PACKAGE, null)
+
     companion object {
         private const val KEY_PROFILE = "profile_json"
         private const val KEY_CAPTURE_ACTIVE = "capture_active"
         private const val KEY_CAPTURE_STATUS = "capture_status"
+        private const val KEY_ACCESSIBILITY_HEARTBEAT = "accessibility_heartbeat"
+        private const val KEY_LAST_FOREGROUND_PACKAGE = "last_foreground_package"
     }
 }

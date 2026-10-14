@@ -13,7 +13,7 @@ or app compatibility testing.
 - Validated JSON-compatible `VisualProfile`.
 - `TYPE_APPLICATION_OVERLAY` window with `FLAG_NOT_TOUCHABLE` and `FLAG_NOT_FOCUSABLE`.
 - OpenCV frame processor for frames supplied by a user-consented `MediaProjection` pipeline.
-- Sensitive-app package policy and overlay suspend/resume path when a foreground package is supplied.
+- Opt-in Accessibility Service that observes foreground package names and suspends capture for selected sensitive-app name patterns.
 - User-consented `MediaProjection` capture using `VirtualDisplay` and `ImageReader`.
 - Foreground notification service lifecycle for active capture.
 
@@ -23,9 +23,29 @@ or app compatibility testing.
 - Emulator flow verified: grant notifications, start enhancement, choose **Entire screen** in Android's MediaProjection prompt, approve capture, wait for the first-frame running status, and tap **Stop enhancement**. Cancelling capture consent also displays a denial message without crashing.
 - On Android 13 and later, VisionAssist asks for notification permission before starting capture so the foreground-service notification and its Stop action are accessible. Android still controls the consent prompt for every screen-capture session.
 - The direct notification Stop action was not separately tapped during verification. Startup timeout, projection revocation, rotation, latency, and memory-use cases remain untested. No physical-device testing has been performed.
-- Sensitive-app detection is not automatic. The policy only acts when a foreground package is provided, so do not treat it as a complete or guaranteed safeguard.
+- The Accessibility Service was enabled with explicit user consent on the Pixel 7 Android 15 emulator. VisionAssist reported it enabled and responding.
+- The service observes window-state events and stores foreground package identifiers only; it does not retrieve window content. A conservative package-name heuristic suspends capture for selected bank, wallet, password, authenticator, keyboard, and input-method patterns. Names may not reliably identify sensitive apps, so this is best-effort and is not guaranteed protection.
+- Emulator app-switch test passed: with Entire screen capture approved, switching to Android Settings left the projection active; opening Settings search displayed `com.google.android.inputmethod.latin`, which the service detected and used to stop capture. The persisted status showed the sensitive-app suspension message and Android reported no remaining MediaProjection.
+- Emulator detection-loss test passed: while capture was active, turning the Accessibility Service off in Android Settings stopped capture, cleared the projection, and persisted a visible detection-disconnected message. The service was then re-enabled with user consent and confirmed enabled/connected.
+- To reproduce, tap **Enable foreground-app detection**, select **VisionAssist foreground-app detection** under Android's Accessibility settings, turn it on, and accept Android's warning. Return to VisionAssist and confirm the status says it is enabled and responding. Start capture with Android's consent, switch to a harmless app, and open a text field to show the emulator keyboard. Do not use actual banking apps or private account data. To test detection loss, switch Accessibility detection off during capture; it should stop and display the reason.
 - There is no dedicated synthetic-image presentation mode yet. Do not describe the current emulator launch check as a successful live screen-enhancement demonstration.
 - The project does not diagnose eye conditions or calculate/recommend prescriptions.
+
+## Focused verification
+
+Run the Android unit test and debug build from this directory:
+
+```powershell
+.\gradlew.bat testDebugUnitTest assembleDebug
+```
+
+`SensitiveAppPolicyTest` checks representative sensitive-name matches,
+including the emulator's `com.google.android.inputmethod.latin`, and an
+ordinary package name. The emulator test also exercised user consent, active
+capture across a safe Settings app switch, automatic keyboard-triggered
+suspension, and fail-closed shutdown when the Accessibility Service was
+disabled. Android requires users to enable the service themselves in Settings;
+VisionAssist never enables it programmatically.
 
 ## Important platform boundary
 
