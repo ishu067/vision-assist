@@ -98,6 +98,14 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
+                    android:text="Notifications: Required on Android 13+ so the active capture and Stop action stay accessible."
+                    android:textColor="#52627A"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
                     android:text="Screen capture: Android asks for your consent each time you start."
                     android:textColor="#52627A"
                     android:textSize="14sp" />

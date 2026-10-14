@@ -1,9 +1,10 @@
 # VisionAssist Android Module
 
 This module contains the Android app prototype for VisionAssist. The debug APK
-has been built, installed, and launched on the Pixel 7 Android 15 emulator.
-That was a launch smoke test only; the full capture and enhancement flow has
-not yet been validated end-to-end.
+has been built, installed, and exercised on the Pixel 7 Android 15 emulator.
+The user-consented full-screen capture, first-frame status, and in-app stop
+flow were verified there. This is still prototype validation, not broad device
+or app compatibility testing.
 
 ## Included
 
@@ -19,7 +20,9 @@ not yet been validated end-to-end.
 ## Prototype status and limitations
 
 - A Gradle debug build succeeds, and the app launches in the Pixel 7 Android 15 (API 35) emulator.
-- The emulator check did not exercise permission prompts, live capture, rendered enhancement, rotation, latency, or stop/error handling. No physical-device testing has been performed.
+- Emulator flow verified: grant notifications, start enhancement, choose **Entire screen** in Android's MediaProjection prompt, approve capture, wait for the first-frame running status, and tap **Stop enhancement**. Cancelling capture consent also displays a denial message without crashing.
+- On Android 13 and later, VisionAssist asks for notification permission before starting capture so the foreground-service notification and its Stop action are accessible. Android still controls the consent prompt for every screen-capture session.
+- The direct notification Stop action was not separately tapped during verification. Startup timeout, projection revocation, rotation, latency, and memory-use cases remain untested. No physical-device testing has been performed.
 - Sensitive-app detection is not automatic. The policy only acts when a foreground package is provided, so do not treat it as a complete or guaranteed safeguard.
 - There is no dedicated synthetic-image presentation mode yet. Do not describe the current emulator launch check as a successful live screen-enhancement demonstration.
 - The project does not diagnose eye conditions or calculate/recommend prescriptions.
@@ -28,10 +31,10 @@ not yet been validated end-to-end.
 
 An overlay window alone cannot rewrite pixels rendered by another application.
 The app has a `MediaProjection` capture and OpenCV processing path, but its
-end-to-end behavior still needs to be exercised and verified. Android requires
-user consent for screen capture; this project does not bypass that requirement.
-Device testing is still needed for frame latency, rotation, memory use, and app
-compatibility.
+end-to-end start, first-frame, and in-app stop behavior has been exercised in
+the Pixel 7 emulator. Android requires user consent for screen capture; this
+project does not bypass that requirement. Physical-device testing is still
+needed for frame latency, rotation, memory use, and app compatibility.
 
 ## Build prerequisites
 

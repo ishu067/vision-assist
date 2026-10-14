@@ -16,12 +16,22 @@ class ProfileStorage(context: Context) {
 
     fun isCaptureActive(): Boolean = preferences.getBoolean(KEY_CAPTURE_ACTIVE, false)
 
+    fun captureStatusMessage(): String = preferences.getString(KEY_CAPTURE_STATUS, "").orEmpty()
+
     fun setCaptureActive(active: Boolean) {
         preferences.edit().putBoolean(KEY_CAPTURE_ACTIVE, active).apply()
+    }
+
+    fun setCaptureStatus(active: Boolean, message: String) {
+        preferences.edit()
+            .putBoolean(KEY_CAPTURE_ACTIVE, active)
+            .putString(KEY_CAPTURE_STATUS, message)
+            .apply()
     }
 
     companion object {
         private const val KEY_PROFILE = "profile_json"
         private const val KEY_CAPTURE_ACTIVE = "capture_active"
+        private const val KEY_CAPTURE_STATUS = "capture_status"
     }
 }

@@ -44,7 +44,14 @@ class MainActivity : AppCompatActivity() {
                 putExtra(OverlayService.EXTRA_RESULT_CODE, result.resultCode)
                 putExtra(OverlayService.EXTRA_RESULT_DATA, result.data)
             }
-            ContextCompat.startForegroundService(this, serviceIntent)
+            try {
+                ContextCompat.startForegroundService(this, serviceIntent)
+            } catch (exception: Exception) {
+                showCaptureStatus(
+                    false,
+                    "Android could not start the capture service: ${exception.localizedMessage ?: "unexpected service error"}",
+                )
+            }
         } else {
             showCaptureStatus(false, "Screen-capture consent was not granted. Enhancement did not start.")
         }
@@ -52,8 +59,13 @@ class MainActivity : AppCompatActivity() {
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
-    ) {
+    ) { granted ->
         refreshPermissionStatus()
+        binding.actionMessage.text = if (granted) {
+            "Notifications are allowed. Tap Start screen enhancement when you’re ready."
+        } else {
+            "Allow notifications before starting so the ongoing capture and Stop control remain visible."
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -77,7 +89,7 @@ class MainActivity : AppCompatActivity() {
         binding.startButton.setOnClickListener { startEnhancement() }
         binding.stopButton.setOnClickListener { stopEnhancement() }
         refreshPermissionStatus()
-        showCaptureStatus(storage.isCaptureActive(), "")
+        refreshCaptureStatus()
     }
 
     override fun onStart() {
@@ -96,7 +108,7 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         refreshPermissionStatus()
         if (::storage.isInitialized && ::binding.isInitialized) {
-            showCaptureStatus(storage.isCaptureActive(), "")
+            refreshCaptureStatus()
         }
     }
 
@@ -129,19 +141,44 @@ class MainActivity : AppCompatActivity() {
 
     private fun startEnhancement() {
         storage.save(readProfile())
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            binding.actionMessage.text =
+                "Allow notifications so you can see the ongoing capture and stop it safely."
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            return
+        }
         if (!Settings.canDrawOverlays(this)) {
             binding.actionMessage.text = "Allow overlay access, return here, then tap Start screen enhancement again."
             openOverlaySettings()
             return
         }
         binding.actionMessage.text = "Android will ask you to approve screen capture."
-        val manager = getSystemService(android.media.projection.MediaProjectionManager::class.java)
-        projectionLauncher.launch(manager.createScreenCaptureIntent())
+        try {
+            val manager = requireNotNull(
+                getSystemService(android.media.projection.MediaProjectionManager::class.java),
+            ) { "Android's screen-capture service is unavailable." }
+            projectionLauncher.launch(manager.createScreenCaptureIntent())
+        } catch (exception: Exception) {
+            showCaptureStatus(
+                false,
+                "Could not open Android's screen-capture prompt: ${exception.localizedMessage ?: "unexpected error"}",
+            )
+        }
     }
 
     private fun stopEnhancement() {
-        startService(Intent(this, OverlayService::class.java).setAction(OverlayService.ACTION_STOP))
+        binding.stopButton.isEnabled = false
         binding.actionMessage.text = "Stopping screen enhancement…"
+        try {
+            startService(Intent(this, OverlayService::class.java).setAction(OverlayService.ACTION_STOP))
+        } catch (exception: Exception) {
+            binding.stopButton.isEnabled = true
+            binding.actionMessage.text =
+                "Could not send the stop request: ${exception.localizedMessage ?: "unexpected service error"}"
+        }
     }
 
     private fun openOverlaySettings() {
@@ -184,7 +221,7 @@ class MainActivity : AppCompatActivity() {
             binding.notificationPermissionStatus.text = if (notificationsGranted) {
                 "Notifications: Allowed"
             } else {
-                "Notifications: Not allowed; Android may limit visible service notifications"
+                "Notifications: Required before capture so the Stop action is accessible"
             }
             binding.notificationPermissionButton.isEnabled = !notificationsGranted
             binding.notificationPermissionButton.text =
@@ -197,13 +234,26 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showCaptureStatus(running: Boolean, message: String) {
-        binding.captureStatus.text = if (running) {
-            "Running — screen capture and overlay are active."
+        if (::storage.isInitialized) storage.setCaptureStatus(running, message)
+        binding.captureStatus.text = if (running && message.isNotBlank()) {
+            message
+        } else if (running) {
+            "Screen enhancement is active."
         } else {
             "Not running"
         }
         binding.startButton.isEnabled = !running
         binding.stopButton.isEnabled = running
-        if (message.isNotBlank()) binding.actionMessage.text = message
+        if (!running && message.isNotBlank()) binding.actionMessage.text = message
+    }
+
+    private fun refreshCaptureStatus() {
+        if (storage.isCaptureActive() && !OverlayService.captureServiceActive) {
+            storage.setCaptureStatus(
+                false,
+                "The previous capture session is no longer active. Start again when ready.",
+            )
+        }
+        showCaptureStatus(storage.isCaptureActive(), storage.captureStatusMessage())
     }
 }

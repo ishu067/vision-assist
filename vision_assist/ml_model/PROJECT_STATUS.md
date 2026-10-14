@@ -19,13 +19,22 @@ Verified in this workspace:
   `android-app` using the wrapper's Android Studio JBR fallback.
 - Emulator smoke test: the debug APK installed and `MainActivity` launched on
   the Pixel 7 AVD running Android 15 (API 35).
+- Android capture flow: on the Pixel 7 AVD, notification permission was
+  granted, Android's system screen-capture prompt was explicitly set to
+  **Entire screen** and approved, the foreground service received frames, and
+  the app showed the running state. The in-app Stop action ended capture and
+  removed the MediaProjection session. Cancelling the capture prompt also
+  showed a clear denial state without crashing.
 
 Not verified yet:
 
-- Interacting through the Android UI to grant permissions and complete the
-  MediaProjection capture flow.
-- Visible enhancement quality, overlay behavior during real capture, or
-  reliable stop/error handling.
+- Capture on a physical device, or compatibility across apps, rotation,
+  latency, and memory use.
+- Direct activation of the Stop action in the foreground notification; the
+  in-app Stop action and notification presence were verified, but the
+  notification action itself was not separately tapped in the emulator.
+- Startup timeout, projection revocation, and frame-processing failure
+  handling beyond code/build verification.
 - Rotation, latency, memory use, compatibility across apps, or physical-device
   behavior.
 - Automatic foreground-package detection and sensitive-app suspension.
@@ -187,25 +196,25 @@ An Android module now exists under `android-app`.
 - Android Studio is installed at `C:\Program Files\Android\Android Studio` with a bundled JBR. Android SDK Platform 35, Android build tools, Platform-Tools/ADB, and a Pixel 7 AVD are installed under `D:\Android`.
 - The machine-level `JAVA_HOME` still contains a stale path (`C:\Users\ishuy\AppData\Local\Programs\Eclipse Adoptium`). A non-elevated attempt to clear it was denied. The Android wrapper falls back to Android Studio's JBR when the inherited Java path is invalid; the project also sets `org.gradle.java.home`.
 - `.\gradlew.bat assembleDebug` completed successfully. The build emitted a warning that Android Gradle Plugin 8.5.2 was tested through compileSdk 34 while this app uses compileSdk 35.
-- The debug APK installed and `MainActivity` launched on the Pixel 7 AVD (Android 15/API 35). This was a launch smoke test only; permissions and live screen capture were not exercised.
+- The debug APK installed and `MainActivity` launched on the Pixel 7 AVD (Android 15/API 35). Notification permission and Android's explicit full-screen MediaProjection consent were granted; first-frame status and active foreground-service state were verified.
+- The in-app Stop action ended the projection and foreground service. Cancelling the system capture prompt showed the denial message and left the app process running.
+- Startup-timeout, external projection revocation, and physical-device scenarios have not been exercised.
 - No physical-device validation has been performed.
 
 ## 7. Next steps for a presentation-level prototype
 
 Prioritize a reliable, honest demonstration over production features:
 
-1. Walk through the Android app and document the exact permissions and actions
-   needed to start/stop capture. Make permission-denied, startup, and capture
-   failures visible to the user.
+1. Separately tap and verify the notification's Stop action; verify the
+   projection-revoked and no-first-frame timeout states in the emulator.
 2. Add a clear demo-mode path using synthetic or bundled non-sensitive imagery
    so the enhancement can be shown even if live capture is unavailable. Label
    it clearly as demo content, not live screen capture.
 3. Implement foreground-app detection for the existing sensitive-app policy
    only if it can be tested end-to-end. Explain its user-granted Accessibility
    permission and limitations; do not claim guaranteed protection.
-4. Rehearse the permission and capture flow in the emulator. Verify overlay
-   appearance, enhancement output, and stopping behavior. Record failures and
-   limitations in the README.
+4. Rehearse on a physical device if available and document observed
+   limitations. Do not claim this has been validated across apps or devices.
 5. Refresh this status and the Android README with only results actually
    observed. TFLite and broad device compatibility can remain out of scope for
    a presentation-only prototype.
