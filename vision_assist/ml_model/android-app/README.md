@@ -21,7 +21,7 @@ An overlay window alone cannot rewrite pixels rendered by another application. F
 
 Install Android Studio with:
 
-- JDK 17
+- Android Studio bundled JBR (JetBrains Runtime) or a compatible JDK
 - Android SDK Platform 35
 - Android build tools
 - Gradle support
@@ -31,5 +31,6 @@ This workspace is configured to keep Android SDK files on `D:`:
 - SDK: `D:\Android\Sdk`
 - Gradle cache: `D:\Android\Gradle`
 - Emulator data: `D:\Android\Avd`
+- Java runtime: `C:\Program Files\Android\Android Studio\jbr`
 
-Install the SDK components through Android Studio's SDK Manager using `D:\Android\Sdk` as the SDK location. Then open this `android-app` directory in Android Studio and sync the Gradle project.
+Install the SDK components through Android Studio's SDK Manager using `D:\Android\Sdk` as the SDK location. If a stale machine-level `JAVA_HOME` is present, the project wrapper now falls back to Android Studio's bundled JBR automatically. Then open this `android-app` directory in Android Studio and sync the Gradle project.
