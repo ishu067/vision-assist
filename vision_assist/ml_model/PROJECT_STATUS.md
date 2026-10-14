@@ -1,6 +1,39 @@
 # VisionAssist Project Status
 
-Date: 2026-09-19
+Last verified: 2026-10-14
+
+## Current prototype status
+
+VisionAssist has a runnable Python image-enhancement prototype and an Android
+debug APK that builds, installs, and launches in the configured emulator. This
+is enough for continued prototype development and a basic app-launch
+demonstration; it is **not yet verified as a dependable live screen-enhancement
+demo or production-ready accessibility tool**.
+
+Verified in this workspace:
+
+- Python unit tests: 4 tests pass with `python -m unittest discover -s tests -v`.
+- Python demo: `python -m vision_assist.demo` writes
+  `artifacts/demo_enhanced.png` and reports one cache hit and one miss.
+- Android build: `.\gradlew.bat assembleDebug` succeeds from
+  `android-app` using the wrapper's Android Studio JBR fallback.
+- Emulator smoke test: the debug APK installed and `MainActivity` launched on
+  the Pixel 7 AVD running Android 15 (API 35).
+
+Not verified yet:
+
+- Interacting through the Android UI to grant permissions and complete the
+  MediaProjection capture flow.
+- Visible enhancement quality, overlay behavior during real capture, or
+  reliable stop/error handling.
+- Rotation, latency, memory use, compatibility across apps, or physical-device
+  behavior.
+- Automatic foreground-package detection and sensitive-app suspension.
+- A dedicated offline/demo-mode presentation flow.
+
+The Android app should currently be presented as an **early prototype**. Do not
+claim that live enhancement, sensitive-app exclusion, or physical-device
+behavior has been fully validated.
 
 ## 1. Source document reviewed
 
@@ -71,22 +104,21 @@ This means a repeated frame is reused, while changing the user profile forces a 
 - Profile changes invalidate the cache key.
 - Input bounds and unsupported color modes are handled safely.
 
-## 3. Validation completed
+## 3. Python validation
 
 The following checks passed:
 
 ```text
 python -m unittest discover -s tests -v
-Ran 3 tests ... OK
-
-python -m compileall -q src tests
-Completed successfully
+Ran 4 tests ... OK
 
 python -m vision_assist.demo
 cache hits=1, misses=1
 ```
 
-OpenCV and NumPy are available in the current Python environment. TensorFlow, ONNX Runtime, and the Android toolchain are not installed in this workspace yet.
+OpenCV and NumPy are available in the current Python environment. The test
+suite covers caching, profile validation, JSON round-tripping, and runtime
+policy behavior; it does not validate Android rendering or capture.
 
 ## 4. Current architecture
 
@@ -103,7 +135,8 @@ User inputs and calibration
    Enhanced local frame
 ```
 
-The Android overlay, Accessibility Service, Quick Settings tile, and TFLite performance controller are not implemented yet.
+The Accessibility Service, Quick Settings tile, TFLite performance controller,
+and a dedicated presentation demo mode are not implemented yet.
 
 ## 5. Completed bridge step
 
@@ -146,26 +179,41 @@ An Android module now exists under `android-app`.
 ### Sensitive-app exclusion
 
 - `SensitiveAppPolicy.kt` identifies package-name fragments associated with banking, wallets, passwords, authenticators, keyboards, and IMEs.
-- The service accepts `EXTRA_FOREGROUND_PACKAGE` and removes the overlay for a sensitive package.
-- A future Accessibility Service can send foreground-package changes to this service.
+- The service accepts `EXTRA_FOREGROUND_PACKAGE` and removes the overlay for a sensitive package when it is given the foreground package.
+- Automatic foreground-package detection is not implemented; therefore sensitive-app suspension is not currently an end-to-end safeguard and must not be presented as guaranteed protection.
 
 ### Validation
 
-- Required Android files and XML resources were checked structurally.
-- The Python regression suite still passes all 4 tests.
-- Android Studio is now installed at `C:\Program Files\Android\Android Studio` with bundled Java 25.
-- The Android SDK Platform 35, Build-Tools, Platform-Tools/ADB, and a Gradle wrapper are still pending.
-- Android SDK, Gradle cache, emulator data, and Android user data are configured for `D:\Android` to protect the nearly-full `C:` drive.
-- APK compilation and device testing have not run yet.
+- Android Studio is installed at `C:\Program Files\Android\Android Studio` with a bundled JBR. Android SDK Platform 35, Android build tools, Platform-Tools/ADB, and a Pixel 7 AVD are installed under `D:\Android`.
+- The machine-level `JAVA_HOME` still contains a stale path (`C:\Users\ishuy\AppData\Local\Programs\Eclipse Adoptium`). A non-elevated attempt to clear it was denied. The Android wrapper falls back to Android Studio's JBR when the inherited Java path is invalid; the project also sets `org.gradle.java.home`.
+- `.\gradlew.bat assembleDebug` completed successfully. The build emitted a warning that Android Gradle Plugin 8.5.2 was tested through compileSdk 34 while this app uses compileSdk 35.
+- The debug APK installed and `MainActivity` launched on the Pixel 7 AVD (Android 15/API 35). This was a launch smoke test only; permissions and live screen capture were not exercised.
+- No physical-device validation has been performed.
 
-## 7. Next implementation step
+## 7. Next steps for a presentation-level prototype
 
-Open Android Studio's SDK Manager, select `D:\Android\Sdk` as the SDK location, and install SDK Platform 35, Android SDK Build-Tools, and Android SDK Platform-Tools. Then sync/build this module, implement Accessibility Service foreground-package updates, and test rotation, frame latency, memory use, and sensitive-app suspension on a real device before adding the TFLite performance controller.
+Prioritize a reliable, honest demonstration over production features:
+
+1. Walk through the Android app and document the exact permissions and actions
+   needed to start/stop capture. Make permission-denied, startup, and capture
+   failures visible to the user.
+2. Add a clear demo-mode path using synthetic or bundled non-sensitive imagery
+   so the enhancement can be shown even if live capture is unavailable. Label
+   it clearly as demo content, not live screen capture.
+3. Implement foreground-app detection for the existing sensitive-app policy
+   only if it can be tested end-to-end. Explain its user-granted Accessibility
+   permission and limitations; do not claim guaranteed protection.
+4. Rehearse the permission and capture flow in the emulator. Verify overlay
+   appearance, enhancement output, and stopping behavior. Record failures and
+   limitations in the README.
+5. Refresh this status and the Android README with only results actually
+   observed. TFLite and broad device compatibility can remain out of scope for
+   a presentation-only prototype.
 
 ## 8. Safety and product boundaries
 
 - Do not claim that the system diagnoses cataracts, color blindness, refractive error, or any other condition.
 - Do not calculate or recommend spectacle prescriptions.
 - Keep medical fields local and minimize their retention.
-- Suspend enhancement for banking, password, keyboard, and other sensitive surfaces.
+- Implement and verify sensitive-surface suspension before describing it as a feature; the current package policy alone does not detect the foreground app automatically.
 - Validate accessibility benefit with qualified users and clinical/accessibility guidance before real-world deployment.
