@@ -11,9 +11,14 @@ This repository contains the laptop-testable core of the VisionAssist concept fr
 - Uses a bounded in-memory LRU auto-cache keyed by the frame content and the full profile.
 - Keeps medical information local and treats it as user context, not as a diagnostic signal.
 
-The target product described in the synopsis is Android-first. This Python package is the testable filter/cache core; the Android overlay and TFLite performance controller should consume the same profile contract later.
+The Android prototype is available in [android-app](android-app). It includes
+an offline synthetic-image demonstration and a separate, user-consented live
+screen-capture path. The Android UI currently exposes brightness, contrast,
+and adaptive contrast; it does not yet implement all Python profile modes or
+the planned TFLite performance controller.
 
-The Android scaffold is in [android-app](android-app) with its own setup notes in [android-app/README.md](android-app/README.md).
+Android setup and manual test notes are in
+[android-app/README.md](android-app/README.md).
 
 ## Setup
 
@@ -30,16 +35,25 @@ python -m venv .venv
 
 The demo creates a sample image in `artifacts/demo_enhanced.png` and prints cache statistics.
 
+For an on-device presentation without screen-capture consent, launch
+VisionAssist and use **Run offline synthetic demo**. It generates a local
+sample image and labels the input and enhanced preview as synthetic; it does
+not display a live app screen.
+
 ## Test
 
 ```powershell
 \.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-## Planned Android mapping
+## Android prototype and remaining work
 
-1. Store the serialized `VisualProfile` in Android private storage.
-2. Reimplement `EnhancementEngine` with OpenCV Android and `ColorMatrix`.
-3. Capture screen frames through the permitted Android accessibility/overlay architecture.
-4. Keep overlay windows non-touchable and non-focusable, and suspend them for sensitive apps.
-5. Add a quantized MobileNetV2/TFLite controller only for workload or scene-policy selection; do not use it for diagnosis or prescription.
+- User profile settings are stored in Android private storage.
+- Android uses OpenCV for brightness, contrast, and CLAHE on captured frames and
+  on the offline synthetic demo image.
+- Live screen capture requires Android's explicit MediaProjection consent.
+- The overlay is non-touchable and non-focusable. The opt-in Accessibility
+  Service uses a best-effort package-name policy; it is not guaranteed
+  sensitive-app protection.
+- Physical-device compatibility and additional profile modes remain to be
+  validated. TFLite work is not required for the presentation prototype.

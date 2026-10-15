@@ -1,14 +1,14 @@
 # VisionAssist Project Status
 
-Last verified: 2026-10-14
+Last verified: 2026-10-15
 
 ## Current prototype status
 
 VisionAssist has a runnable Python image-enhancement prototype and an Android
-debug APK that builds, installs, and launches in the configured emulator. This
-is enough for continued prototype development and a basic app-launch
-demonstration; it is **not yet verified as a dependable live screen-enhancement
-demo or production-ready accessibility tool**.
+debug APK with a local synthetic-image demo plus consented live capture. The
+offline demo is the reliable presentation path when screen-capture permissions
+or live app compatibility are unavailable. It is **not a production-ready
+accessibility tool**, and physical-device behavior has not been validated.
 
 Verified in this workspace:
 
@@ -39,6 +39,11 @@ Verified in this workspace:
   afterward.
 - Android unit tests: `.\gradlew.bat testDebugUnitTest assembleDebug` passed;
   both sensitive-package policy tests passed.
+- Offline Android demo: on the Pixel 7 Android 15 emulator, the demo generated
+  synthetic artwork locally, applied current brightness, contrast, and CLAHE
+  settings through OpenCV, and visibly presented input and enhanced previews.
+  Android reported no active MediaProjection, confirming the demo did not
+  start screen capture.
 
 Not verified yet:
 
@@ -55,7 +60,7 @@ Not verified yet:
   devices. Emulator keyboard suspension and service-loss shutdown were
   verified, but the package-name heuristic can miss apps and is not a
   guarantee of protection.
-- A dedicated offline/demo-mode presentation flow.
+- Offline demo interaction and image output on a physical Android device.
 
 The Android app should currently be presented as an **early prototype**. Live
 capture and limited guard behavior were demonstrated on one emulator; do not
@@ -161,9 +166,9 @@ User inputs and calibration
    Enhanced local frame
 ```
 
-The opt-in Accessibility Service is implemented but not end-to-end validated.
-A Quick Settings tile, TFLite performance controller, and dedicated
-presentation demo mode are not implemented yet.
+The opt-in Accessibility Service and offline synthetic demo are implemented;
+the guard has limited end-to-end emulator validation. A Quick Settings tile
+and TFLite performance controller are not implemented.
 
 ## 5. Completed bridge step
 
@@ -219,6 +224,10 @@ An Android module now exists under `android-app`.
   caused the service to detect `com.google.android.inputmethod.latin` and stop
   active capture; disabling Accessibility during another active capture also
   stopped it. The service was re-enabled with user consent after testing.
+- The offline demo generates an explicitly marked synthetic image locally and
+  shows original and enhanced previews using the current brightness, contrast,
+  and CLAHE settings. It remains separate from the user-consented live capture
+  controls and does not claim to show another app's screen.
 
 ### Validation
 
@@ -226,6 +235,7 @@ An Android module now exists under `android-app`.
 - The machine-level `JAVA_HOME` still contains a stale path (`C:\Users\ishuy\AppData\Local\Programs\Eclipse Adoptium`). A non-elevated attempt to clear it was denied. The Android wrapper falls back to Android Studio's JBR when the inherited Java path is invalid; the project also sets `org.gradle.java.home`.
 - `.\gradlew.bat assembleDebug` completed successfully. The build emitted a warning that Android Gradle Plugin 8.5.2 was tested through compileSdk 34 while this app uses compileSdk 35.
 - `.\gradlew.bat testDebugUnitTest assembleDebug` completed successfully after adding the Accessibility Service. Both package-policy unit tests passed.
+- The Android unit tests and debug APK build were rerun after adding the offline synthetic demo; both passed. The demo path was designed to avoid all MediaProjection, overlay, Accessibility, and notification prerequisites.
 - The updated debug APK installed and launched on the Pixel 7 Android 15 AVD. Android Accessibility Settings displayed the service and disclosure; the user enabled it and the app showed an enabled/responding status.
 - On the AVD, full-screen capture remained active while switching to Settings. Opening Settings search showed the `com.google.android.inputmethod.latin` IME; the service detected it, suspended capture, and Android reported no active projection.
 - With capture active in a separate run, turning the Accessibility Service off caused immediate capture shutdown and a visible stored detection-disconnected status. The user re-enabled the service afterward; Settings and the service binding confirmed it remained enabled.
@@ -240,9 +250,9 @@ Prioritize a reliable, honest demonstration over production features:
 
 1. Separately tap and verify the notification's Stop action; verify the
    projection-revoked and no-first-frame timeout states in the emulator.
-2. Add a clear demo-mode path using synthetic or bundled non-sensitive imagery
-   so the enhancement can be shown even if live capture is unavailable. Label
-   it clearly as demo content, not live screen capture.
+2. Validate the offline synthetic demo visually on an emulator and physical
+   device; verify adjustments produce an enhanced preview and the UI never
+   implies that sample content is live capture.
 3. Repeat the foreground-app and service-loss scenarios on a physical device
    and additional harmless package names if available. Do not use actual
    private account data or claim the package-name heuristic guarantees

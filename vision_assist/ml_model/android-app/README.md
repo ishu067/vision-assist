@@ -13,6 +13,7 @@ or app compatibility testing.
 - Validated JSON-compatible `VisualProfile`.
 - `TYPE_APPLICATION_OVERLAY` window with `FLAG_NOT_TOUCHABLE` and `FLAG_NOT_FOCUSABLE`.
 - OpenCV frame processor for frames supplied by a user-consented `MediaProjection` pipeline.
+- Offline demo that creates synthetic artwork locally and previews the original beside the OpenCV-enhanced result.
 - Opt-in Accessibility Service that observes foreground package names and suspends capture for selected sensitive-app name patterns.
 - User-consented `MediaProjection` capture using `VirtualDisplay` and `ImageReader`.
 - Foreground notification service lifecycle for active capture.
@@ -21,6 +22,7 @@ or app compatibility testing.
 
 - A Gradle debug build succeeds, and the app launches in the Pixel 7 Android 15 (API 35) emulator.
 - Emulator flow verified: grant notifications, start enhancement, choose **Entire screen** in Android's MediaProjection prompt, approve capture, wait for the first-frame running status, and tap **Stop enhancement**. Cancelling capture consent also displays a denial message without crashing.
+- Offline presentation flow verified on the Pixel 7 Android 15 emulator: set brightness, contrast, or adaptive contrast in the profile section, then tap **Run offline synthetic demo**. VisionAssist creates non-sensitive artwork locally and shows side-by-side synthetic input and enhanced preview. The section and status explicitly say this is not a live screen, and Android reported no active MediaProjection after the demo ran.
 - On Android 13 and later, VisionAssist asks for notification permission before starting capture so the foreground-service notification and its Stop action are accessible. Android still controls the consent prompt for every screen-capture session.
 - The direct notification Stop action was not separately tapped during verification. Startup timeout, projection revocation, rotation, latency, and memory-use cases remain untested. No physical-device testing has been performed.
 - The Accessibility Service was enabled with explicit user consent on the Pixel 7 Android 15 emulator. VisionAssist reported it enabled and responding.
@@ -28,7 +30,7 @@ or app compatibility testing.
 - Emulator app-switch test passed: with Entire screen capture approved, switching to Android Settings left the projection active; opening Settings search displayed `com.google.android.inputmethod.latin`, which the service detected and used to stop capture. The persisted status showed the sensitive-app suspension message and Android reported no remaining MediaProjection.
 - Emulator detection-loss test passed: while capture was active, turning the Accessibility Service off in Android Settings stopped capture, cleared the projection, and persisted a visible detection-disconnected message. The service was then re-enabled with user consent and confirmed enabled/connected.
 - To reproduce, tap **Enable foreground-app detection**, select **VisionAssist foreground-app detection** under Android's Accessibility settings, turn it on, and accept Android's warning. Return to VisionAssist and confirm the status says it is enabled and responding. Start capture with Android's consent, switch to a harmless app, and open a text field to show the emulator keyboard. Do not use actual banking apps or private account data. To test detection loss, switch Accessibility detection off during capture; it should stop and display the reason.
-- There is no dedicated synthetic-image presentation mode yet. Do not describe the current emulator launch check as a successful live screen-enhancement demonstration.
+- The offline demo is a sample-image presentation path, not proof of real-app or physical-device behavior. Live capture remains a separate action and still requires the platform permissions and explicit MediaProjection consent.
 - The project does not diagnose eye conditions or calculate/recommend prescriptions.
 
 ## Focused verification

@@ -7,6 +7,11 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.RectF
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -18,11 +23,16 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.visionassist.android.databinding.ActivityMainBinding
+import org.opencv.android.OpenCVLoader
+import java.util.concurrent.Executors
 import kotlin.math.roundToInt
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var storage: ProfileStorage
+    private val demoExecutor = Executors.newSingleThreadExecutor()
+    private var syntheticPreview: Bitmap? = null
+    private var enhancedPreview: Bitmap? = null
     private var statusReceiverRegistered = false
 
     private val statusReceiver = object : BroadcastReceiver() {
@@ -89,6 +99,7 @@ class MainActivity : AppCompatActivity() {
         }
         binding.startButton.setOnClickListener { startEnhancement() }
         binding.stopButton.setOnClickListener { stopEnhancement() }
+        binding.demoButton.setOnClickListener { runOfflineDemo() }
         refreshPermissionStatus()
         refreshCaptureStatus()
     }
@@ -119,6 +130,12 @@ class MainActivity : AppCompatActivity() {
             statusReceiverRegistered = false
         }
         super.onStop()
+    }
+
+    override fun onDestroy() {
+        demoExecutor.shutdownNow()
+        clearDemoPreview()
+        super.onDestroy()
     }
 
     private fun readProfile(): VisualProfile = VisualProfile(
@@ -192,6 +209,107 @@ class MainActivity : AppCompatActivity() {
             binding.actionMessage.text =
                 "Could not send the stop request: ${exception.localizedMessage ?: "unexpected service error"}"
         }
+    }
+
+    private fun runOfflineDemo() {
+        val profile = readProfile()
+        storage.save(profile)
+        clearDemoPreview()
+        binding.demoStatus.text = "Preparing a synthetic sample. No screen is being captured."
+        binding.demoButton.isEnabled = false
+
+        demoExecutor.execute {
+            var source: Bitmap? = null
+            var enhanced: Bitmap? = null
+            try {
+                check(OpenCVLoader.initLocal()) { "OpenCV could not initialize on this device." }
+                source = createSyntheticDemoFrame()
+                enhanced = OpenCvFrameProcessor().process(source, profile)
+                val sourceResult = source
+                val enhancedResult = enhanced
+                source = null
+                enhanced = null
+                runOnUiThread {
+                    if (isFinishing || isDestroyed) {
+                        sourceResult.recycle()
+                        enhancedResult.recycle()
+                        return@runOnUiThread
+                    }
+                    syntheticPreview = sourceResult
+                    enhancedPreview = enhancedResult
+                    binding.syntheticPreview.setImageBitmap(sourceResult)
+                    binding.enhancedPreview.setImageBitmap(enhancedResult)
+                    binding.demoPreviewGroup.visibility = android.view.View.VISIBLE
+                    binding.demoStatus.text =
+                        "Offline demo active: synthetic imagery only. Current brightness, contrast, and adaptive-contrast settings were applied; this is not live capture."
+                    binding.demoButton.isEnabled = !storage.isCaptureActive()
+                }
+            } catch (exception: Exception) {
+                source?.recycle()
+                enhanced?.recycle()
+                runOnUiThread {
+                    if (isFinishing || isDestroyed) return@runOnUiThread
+                    binding.demoStatus.text =
+                        "Offline demo could not run: ${exception.localizedMessage ?: "unexpected image-processing error"}"
+                    binding.demoButton.isEnabled = !storage.isCaptureActive()
+                }
+            }
+        }
+    }
+
+    private fun clearDemoPreview() {
+        binding.syntheticPreview.setImageDrawable(null)
+        binding.enhancedPreview.setImageDrawable(null)
+        binding.demoPreviewGroup.visibility = android.view.View.GONE
+        syntheticPreview?.recycle()
+        enhancedPreview?.recycle()
+        syntheticPreview = null
+        enhancedPreview = null
+    }
+
+    private fun createSyntheticDemoFrame(): Bitmap {
+        val bitmap = Bitmap.createBitmap(DEMO_IMAGE_WIDTH, DEMO_IMAGE_HEIGHT, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        canvas.drawColor(Color.rgb(239, 243, 249))
+
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(28, 47, 78) }
+        canvas.drawRect(0f, 0f, DEMO_IMAGE_WIDTH.toFloat(), 82f, paint)
+        paint.color = Color.WHITE
+        paint.textSize = 30f
+        paint.typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD)
+        canvas.drawText("SYNTHETIC DEMO", 28f, 51f, paint)
+
+        paint.color = Color.rgb(37, 86, 160)
+        paint.textSize = 27f
+        canvas.drawText("Visual settings preview", 32f, 132f, paint)
+        paint.color = Color.rgb(73, 85, 103)
+        paint.textSize = 19f
+        paint.typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL)
+        canvas.drawText("Generated sample content - not a captured screen", 32f, 165f, paint)
+
+        val tones = intArrayOf(58, 91, 124, 157, 190, 223)
+        val swatchWidth = 96f
+        tones.forEachIndexed { index, tone ->
+            paint.color = Color.rgb(tone, tone, tone)
+            val left = 32f + index * (swatchWidth + 10f)
+            canvas.drawRoundRect(RectF(left, 197f, left + swatchWidth, 258f), 8f, 8f, paint)
+        }
+
+        paint.color = Color.WHITE
+        canvas.drawRoundRect(RectF(32f, 284f, 688f, 431f), 14f, 14f, paint)
+        paint.color = Color.rgb(35, 74, 127)
+        paint.textSize = 22f
+        paint.typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD)
+        canvas.drawText("Profile controls", 55f, 324f, paint)
+        paint.color = Color.rgb(78, 91, 111)
+        paint.textSize = 18f
+        paint.typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL)
+        canvas.drawText("Brightness  |  Contrast  |  Adaptive contrast", 55f, 361f, paint)
+        paint.color = Color.rgb(222, 231, 245)
+        canvas.drawRoundRect(RectF(55f, 382f, 650f, 399f), 8f, 8f, paint)
+        paint.color = Color.rgb(48, 101, 173)
+        canvas.drawRoundRect(RectF(55f, 382f, 392f, 399f), 8f, 8f, paint)
+        return bitmap
     }
 
     private fun openOverlaySettings() {
@@ -277,6 +395,8 @@ class MainActivity : AppCompatActivity() {
         }
         binding.startButton.isEnabled = !running
         binding.stopButton.isEnabled = running
+        if (running) binding.demoButton.isEnabled = false
+        else if (syntheticPreview != null) binding.demoButton.isEnabled = true
         if (!running && message.isNotBlank()) binding.actionMessage.text = message
     }
 
@@ -288,5 +408,10 @@ class MainActivity : AppCompatActivity() {
             )
         }
         showCaptureStatus(storage.isCaptureActive(), storage.captureStatusMessage())
+    }
+
+    private companion object {
+        const val DEMO_IMAGE_WIDTH = 720
+        const val DEMO_IMAGE_HEIGHT = 460
     }
 }
