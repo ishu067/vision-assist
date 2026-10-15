@@ -44,6 +44,11 @@ Verified in this workspace:
   settings through OpenCV, and visibly presented input and enhanced previews.
   Android reported no active MediaProjection, confirming the demo did not
   start screen capture.
+- Presentation rehearsal: the Android README contains a short offline-first
+  script, optional live-capture permission checklist, expected outcomes, and
+  fallbacks. The offline steps were run on the Pixel 7 Android 15 emulator;
+  both synthetic preview labels and the explicit not-live status appeared,
+  with no active MediaProjection.
 
 Not verified yet:
 
@@ -250,9 +255,9 @@ Prioritize a reliable, honest demonstration over production features:
 
 1. Separately tap and verify the notification's Stop action; verify the
    projection-revoked and no-first-frame timeout states in the emulator.
-2. Validate the offline synthetic demo visually on an emulator and physical
-   device; verify adjustments produce an enhanced preview and the UI never
-   implies that sample content is live capture.
+2. Rehearse the offline synthetic demo on a physical device if available;
+   verify adjustments produce an enhanced preview and the UI never implies
+   sample content is live capture.
 3. Repeat the foreground-app and service-loss scenarios on a physical device
    and additional harmless package names if available. Do not use actual
    private account data or claim the package-name heuristic guarantees

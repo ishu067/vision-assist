@@ -49,6 +49,75 @@ suspension, and fail-closed shutdown when the Accessibility Service was
 disabled. Android requires users to enable the service themselves in Settings;
 VisionAssist never enables it programmatically.
 
+## Short presentation demo
+
+Use the offline path as the default; it requires no screen-capture, overlay,
+notification, or Accessibility permission. Allow about 2–3 minutes.
+
+### Setup
+
+Build and install the debug APK (or open the already-installed app):
+
+```powershell
+.\gradlew.bat assembleDebug
+adb install -r .\app\build\outputs\apk\debug\app-debug.apk
+adb shell am start -n com.visionassist.android/.MainActivity
+```
+
+### Rehearsal script
+
+1. Point out that VisionAssist is an accessibility prototype, not a diagnosis
+   or prescription tool. Explain that the demo below uses generated sample
+   artwork, not a live screen.
+2. In **Your visual profile**, adjust brightness or contrast and optionally
+   toggle adaptive contrast. The profile inputs are controls for this preview;
+   condition and spectacle-power entries are context only.
+3. Tap **Run offline synthetic demo**.
+4. Show **Synthetic input** beside **Enhanced synthetic preview**. The status
+   should say **Offline demo active** and explicitly state that it is not live
+   capture. The screen-capture permission prompt should not appear.
+5. Change a setting and run the demo again to compare the result.
+6. Point out that **Start screen enhancement** remains a separate live-capture
+   option; do not tap it unless you intend to demonstrate the optional live
+   flow below.
+
+### Optional live-capture demonstration
+
+Live capture is not needed for the short presentation. If demonstrating it,
+prepare these permissions beforehand, through Android's system UI:
+
+1. Allow notifications on Android 13+.
+2. Allow VisionAssist to display over other apps.
+3. Enable **VisionAssist foreground-app detection** in Accessibility settings
+   and accept Android's warning. The service observes foreground package names
+   only; its sensitive-app matching is best-effort.
+4. Return to VisionAssist, tap **Start screen enhancement**, choose
+   **Entire screen** in Android's MediaProjection prompt, and explicitly
+   approve capture. Android may show a further confirmation according to the
+   OS version.
+5. Expected result: the capture status reports the first frame/running state,
+   the ongoing notification offers **Stop**, and tapping **Stop enhancement**
+   ends capture. Android requires consent again when starting another session.
+
+### Fallbacks and limitations
+
+- If permissions are unavailable, declined, or not prepared, use the offline
+  demo; it is designed to work without them. It only demonstrates the current
+  Android brightness, contrast, and CLAHE processing on synthetic content.
+- If the offline preview reports an OpenCV error, restart VisionAssist and
+  retry once. If it still fails, use the Python sample demo documented in the
+  project README and describe it as a separate Python image demo—not as
+  Android live capture.
+- If live capture is declined or fails, state that it did not start and return
+  to the offline demo; never imply synthetic imagery is captured content.
+- The only end-to-end device validation documented here is on the Pixel 7
+  Android 15 emulator. No physical-device validation has been performed.
+  Rotation, performance, memory use, direct notification Stop, and broad app
+  compatibility remain unverified.
+- Foreground-package matching can miss sensitive apps and is not guaranteed
+  protection. Do not test against actual banking apps or private data.
+- VisionAssist does not diagnose conditions or recommend prescriptions.
+
 ## Important platform boundary
 
 An overlay window alone cannot rewrite pixels rendered by another application.
