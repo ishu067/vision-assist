@@ -17,6 +17,10 @@ or app compatibility testing.
 - Opt-in Accessibility Service that observes foreground package names and suspends capture for selected sensitive-app name patterns.
 - User-consented `MediaProjection` capture using `VirtualDisplay` and `ImageReader`.
 - Foreground notification service lifecycle for active capture.
+- During live capture, the enhancement overlay pauses while VisionAssist itself
+  is foreground and resumes when Accessibility reports another foreground app,
+  preventing the app from mirroring its own screen over itself. The pause was
+  verified in the emulator; resuming after an app switch remains unverified.
 
 ## Prototype status and limitations
 
@@ -97,7 +101,10 @@ prepare these permissions beforehand, through Android's system UI:
    OS version.
 5. Expected result: the capture status reports the first frame/running state,
    the ongoing notification offers **Stop**, and tapping **Stop enhancement**
-   ends capture. Android requires consent again when starting another session.
+   ends capture. While VisionAssist is foreground, the overlay is paused to
+   avoid a screen-within-screen effect. After switching apps, resumption depends
+   on foreground detection; that transition remains unverified. Android
+   requires consent again when starting another session.
 
 ### Fallbacks and limitations
 

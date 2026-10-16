@@ -42,6 +42,7 @@ class OverlayService : Service() {
     private var firstFrameReceived = false
     private var serviceActive = false
     private var guardReceiverRegistered = false
+    private var overlaySuppressedForVisionAssist = false
 
     private val accessibilityGuardReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -55,6 +56,10 @@ class OverlayService : Service() {
                         failSession("Foreground-app detection returned no app name; enhancement was suspended.")
                     } else if (SensitiveAppPolicy.shouldSuspend(packageName)) {
                         failSession("A potentially sensitive app was detected; enhancement was suspended.")
+                    } else if (packageName == this@OverlayService.packageName) {
+                        pauseOverlayForVisionAssist()
+                    } else {
+                        resumeOverlayForOtherApp()
                     }
                 }
 
@@ -143,13 +148,14 @@ class OverlayService : Service() {
                 return START_NOT_STICKY
             }
 
+            overlaySuppressedForVisionAssist = foregroundPackage == packageName
             processingErrorReported = false
             firstFrameReceived = false
             serviceActive = true
             captureServiceActive = true
             publishStatus(true, "Starting screen capture. Waiting for the first frame…")
             startForegroundCapture(resultCode, resultData)
-            if (overlayView == null) showOverlay()
+            if (!overlaySuppressedForVisionAssist && overlayView == null) showOverlay()
             handler.postDelayed(captureStartupTimeout, CAPTURE_START_TIMEOUT_MS)
             handler.postDelayed(accessibilityWatchdog, ACCESSIBILITY_WATCHDOG_INTERVAL_MS)
             return START_NOT_STICKY
@@ -178,6 +184,30 @@ class OverlayService : Service() {
         overlayView = view
     }
 
+    private fun pauseOverlayForVisionAssist() {
+        if (overlaySuppressedForVisionAssist) return
+        overlaySuppressedForVisionAssist = true
+        hideOverlay()
+        val message = overlayPausedMessage()
+        publishStatus(true, message)
+        updateNotification("VisionAssist overlay paused", message)
+    }
+
+    private fun resumeOverlayForOtherApp() {
+        if (!overlaySuppressedForVisionAssist) return
+        try {
+            showOverlay()
+            overlaySuppressedForVisionAssist = false
+            val message = "Screen capture is running. Use Stop to end the session."
+            publishStatus(true, message)
+            updateNotification("VisionAssist is active", message)
+        } catch (exception: Exception) {
+            failSession(
+                "Could not resume the enhancement overlay: ${exception.localizedMessage ?: "unexpected overlay error"}",
+            )
+        }
+    }
+
     override fun onDestroy() {
         handler.removeCallbacks(captureStartupTimeout)
         handler.removeCallbacks(accessibilityWatchdog)
@@ -189,6 +219,7 @@ class OverlayService : Service() {
         val cleanupFailure = releaseCapture()
         hideOverlay()
         serviceActive = false
+        overlaySuppressedForVisionAssist = false
         captureServiceActive = false
         if (wasActive) {
             val message = if (cleanupFailure == null) {
@@ -272,13 +303,23 @@ class OverlayService : Service() {
         if (!firstFrameReceived) {
             firstFrameReceived = true
             handler.removeCallbacks(captureStartupTimeout)
-            val message = if (openCvReady) {
+            val message = if (overlaySuppressedForVisionAssist) {
+                overlayPausedMessage()
+            } else if (openCvReady) {
                 "Screen capture is running. Use Stop to end the session."
             } else {
                 "Capture is running, but OpenCV did not initialize; frames are shown without enhancement."
             }
             publishStatus(true, message)
-            updateNotification("VisionAssist is active", message)
+            updateNotification(
+                if (overlaySuppressedForVisionAssist) "VisionAssist overlay paused" else "VisionAssist is active",
+                message,
+            )
+        }
+
+        if (overlaySuppressedForVisionAssist) {
+            frame.recycle()
+            return
         }
 
         val processed = if (openCvReady) {
@@ -317,6 +358,7 @@ class OverlayService : Service() {
         if (!serviceActive) return
         hideOverlay()
         serviceActive = false
+        overlaySuppressedForVisionAssist = false
         captureServiceActive = false
         ProfileStorage(this).setCaptureActive(false)
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
@@ -333,6 +375,7 @@ class OverlayService : Service() {
         handler.removeCallbacks(captureStartupTimeout)
         handler.removeCallbacks(accessibilityWatchdog)
         serviceActive = false
+        overlaySuppressedForVisionAssist = false
         captureServiceActive = false
         val cleanupFailure = releaseCapture()
         hideOverlay()
@@ -395,6 +438,9 @@ class OverlayService : Service() {
     }
 
     private fun storedStatusMessage(): String = ProfileStorage(this).captureStatusMessage()
+
+    private fun overlayPausedMessage(): String =
+        "Capture is running. The overlay is paused while VisionAssist is open to prevent a screen-within-screen effect."
 
     private fun publishStatus(active: Boolean, message: String) {
         ProfileStorage(this).setCaptureStatus(active, message)

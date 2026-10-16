@@ -1,6 +1,6 @@
 # VisionAssist Project Status
 
-Last verified: 2026-10-15
+Last verified: 2026-10-16
 
 ## Current prototype status
 
@@ -49,14 +49,18 @@ Verified in this workspace:
   fallbacks. The offline steps were run on the Pixel 7 Android 15 emulator;
   both synthetic preview labels and the explicit not-live status appeared,
   with no active MediaProjection.
+- Live self-view mitigation: on the Pixel 7 Android 15 emulator, starting
+  consented capture while VisionAssist was foreground kept capture active but
+  removed the overlay window and showed the pause status in the app UI. The
+  ongoing notification's Stop action remained available. The user tapped Stop;
+  MediaProjection then reported null and the app showed the stopped state.
 
 Not verified yet:
 
 - Capture on a physical device, or compatibility across apps, rotation,
   latency, and memory use.
-- Direct activation of the Stop action in the foreground notification; the
-  in-app Stop action and notification presence were verified, but the
-  notification action itself was not separately tapped in the emulator.
+- Resuming the overlay after leaving VisionAssist while capture is active;
+  only the own-app overlay pause was verified in the latest emulator run.
 - Startup timeout, projection revocation, and frame-processing failure
   handling beyond code/build verification.
 - Rotation, latency, memory use, compatibility across apps, or physical-device

@@ -397,7 +397,7 @@ class MainActivity : AppCompatActivity() {
         binding.stopButton.isEnabled = running
         if (running) binding.demoButton.isEnabled = false
         else if (syntheticPreview != null) binding.demoButton.isEnabled = true
-        if (!running && message.isNotBlank()) binding.actionMessage.text = message
+        if (message.isNotBlank()) binding.actionMessage.text = message
     }
 
     private fun refreshCaptureStatus() {
